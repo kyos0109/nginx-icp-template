@@ -1,0 +1,65 @@
+version: "3"
+
+services:
+  frontend:
+    image: nginx
+    container_name: nginx
+    volumes:
+     - ./templates:/etc/nginx/templates
+     - ./example-site:/usr/local/site/pc-dist
+    ports:
+     - "8080:80"
+    environment:
+      NGINX_HOST: $$http_host
+      NGINX_PORT: 80
+      NGINX_ICP_CHANGE_WORD: change_me
+      NGINX_SUB_FILTER_ICP: $$icp
+      NGINX_PC_ROOT_PATH: /usr/local/site/pc-dist
+      NGINX_MOBILE_ROOT_PATH: /usr/local/site/mobile-dist
+      NGINX_ICP_MAP: |
+        map $$http_host $$icp {
+          www.happy1.com www.icp1.com;
+          www.happy2.com www.icp2.com;
+          www.happy3.com www.icp3.com;
+          www.happy4.com www.icp4.com;
+          127.0.0.1:8080 www.google.com;
+          default $$http_host;
+        }
+      NGINX_DENY_ICP_ROOT: |
+        set $$deny_icp "";
+        if ($$http_host = $$icp) {
+            set $$deny_icp T;
+        }
+        if ($$request_uri = /) {
+            set $$deny_icp "$${deny_icp}T";
+        }
+        if ($$request_uri = /index.html) {
+            set $$deny_icp "$${deny_icp}T";
+        }
+        if ($$deny_icp = TT) {
+            add_header Content-Type text/plain always;
+            add_header value $$deny_icp always;
+            add_header cdn $$icp always;
+            return 200 'Is Work!!!';
+        }
+      NGINX_SUB_FILTER_OPTIONS: |
+        sub_filter_once off;
+        sub_filter_types text/css text/javascript application/javascript;
+      NGINX_CORS_FILE: |
+        add_header Access-Control-Allow-Origin $$http_origin always;
+        add_header Access-Control-Allow-Methods 'GET, OPTIONS';
+        add_header Access-Control-Allow-Headers 'User-Agent, Content-Type';
+      NGINX_CORS_API: |
+        add_header Access-Control-Allow-Origin $$http_origin always;
+        add_header Access-Control-Allow-Methods 'GET, POST, OPTIONS, HEAD, PATCH, PUT, DELETE';
+        add_header Access-Control-Allow-Headers 'If-Modified-Since, User-Agent, Content-Type, ident, dcaptcha, captchatoken, sign, token, tick';
+      NGINX_CORS_OPTION_204: |
+        if ($$request_method = 'OPTIONS') {
+            return 204;
+        }
+      NGINX_PROXY_PASS: |
+        proxy_set_header Host $$host;
+        proxy_set_header X-Real-IP $$remote_addr;
+        proxy_set_header X-Forwarded-For $$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $$scheme;
+        proxy_pass http://${SERVER};

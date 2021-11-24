@@ -1,0 +1,45 @@
+$NGINX_ICP_MAP
+server {
+    listen       ${NGINX_PORT};
+    listen  [::]:${NGINX_PORT};
+    server_name  ${NGINX_HOST};
+
+    root ${NGINX_PC_ROOT_PATH};
+
+    location / {
+        ${NGINX_DENY_ICP_ROOT}
+
+        index index.html index.htm;
+
+        # try_files not working after if condition.
+        # try_files $uri $uri/ /index.html;
+        if (!-f $request_filename) {
+            rewrite ^.*$ /index.html last;
+            break;
+        }
+
+        ${NGINX_SUB_FILTER_OPTIONS}
+        sub_filter ${NGINX_ICP_CHANGE_WORD} ${NGINX_SUB_FILTER_ICP};
+
+        ${NGINX_CORS_FILE}
+        ${NGINX_CORS_OPTION_204}
+    }
+
+    location /mobile {
+        alias ${NGINX_MOBILE_ROOT_PATH};
+        index index.html index.htm;
+        try_files $uri $uri/ /mobile/index.html;
+
+        ${NGINX_SUB_FILTER_OPTIONS}
+        sub_filter ${NGINX_ICP_CHANGE_WORD} ${NGINX_SUB_FILTER_ICP};
+
+        ${NGINX_CORS_FILE}
+        ${NGINX_CORS_OPTION_204}
+    }
+
+    location /api {
+        ${NGINX_PROXY_PASS}
+        ${NGINX_CORS_API}
+        ${NGINX_CORS_OPTION_204}
+    }
+}
